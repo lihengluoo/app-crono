@@ -6,7 +6,6 @@
 #include <sys/timeb.h>
 #include <getopt.h>
 #include "../../common/mtx.h"
-#include "../../common/barrier.h"
 
 #define MAX            100000000
 #define INT_MAX        100000000
@@ -70,18 +69,10 @@ void* do_work(void* args)
    //const int N              = arg->N;
    int v                    = 0;              //for each vertex
    int local_count          = 0;
-   double P_d = P;
-   double tid_d = tid;
-   double largest_d = largest+1.0;
-
-   int start =  0;  //tid    * DEG / (arg->P);
-   int stop  = 0;   //(tid+1) * DEG / (arg->P);
 
    //Chunk work into threads
-   double start_d = (tid_d) * (largest_d/P_d);
-   double stop_d = (tid_d+1.0) * (largest_d/P_d);
-   start = start_d; //tid    *  (largest) / (P);
-   stop  = stop_d; //(tid+1) *  (largest) / (P);
+   int start = static_cast<long long>(tid) * (largest + 1LL) / P;
+   int stop = (tid + 1LL) * (largest + 1LL) / P;
    //printf("\n %d %d %d",tid,start,stop);
 
    pthread_barrier_wait(arg->barrier_total);
@@ -106,8 +97,7 @@ void* do_work(void* args)
       }
    }
 
-   barrier_wait();
-   //pthread_barrier_wait(arg->barrier_total);
+   pthread_barrier_wait(arg->barrier_total);
    //printf("\n Done with First Phase");
    
    //Find triangles for each thread
@@ -138,7 +128,7 @@ void* do_work(void* args)
    //int t = Total_tid[tid];
    //int b = __sync_fetch_and_add(&Total_Tri,t);
    
-   barrier_wait();
+   pthread_barrier_wait(arg->barrier_total);
    
    if(tid==0)
    {
@@ -149,9 +139,7 @@ void* do_work(void* args)
      Total_Tri = Total_Tri/3;
    }
 
-	 barrier_wait();
-
-   //pthread_barrier_wait(arg->barrier_total);
+	 pthread_barrier_wait(arg->barrier_total);
 
    //The master thread sums up all triangles
    /*if(tid==0)
@@ -234,12 +222,8 @@ int main(int argc, char** argv)
           number_of_lines0++;
         if(number_of_lines0>3)
         {   
-          int f0 = fscanf(file_gr, "%d %d", &number0, &number1);
-          if(f0 != 2 && f0 !=EOF)
-          {   
-            printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-            exit (EXIT_FAILURE);
-          }   
+          int read_count = fscanf(file_gr, "%d %d", &number0, &number1);
+          (void)read_count;
           if(number0>N)
             N = number0;
           if(number1>N)
@@ -250,11 +234,7 @@ int main(int argc, char** argv)
      
       int *temp;
       number_of_lines0 = 0;
-      if(posix_memalign((void**) &temp, 64, N * sizeof(int)))
-      {   
-        fprintf(stderr, "Allocation of memory failed\n");
-        exit(EXIT_FAILURE);
-      }
+      temp = (int*) malloc(N * sizeof(int));
       for(int i=0;i<N;i++)
         temp[i] = 0;
       file_gr = fopen(filename0,"r");
@@ -264,12 +244,8 @@ int main(int argc, char** argv)
           number_of_lines0++;
         if(number_of_lines0>3)
         {
-          int f0 = fscanf(file_gr, "%d %d", &number0, &number1);
-          if(f0 != 2 && f0 !=EOF)
-          {
-            printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-            exit (EXIT_FAILURE);
-          }
+          int read_count = fscanf(file_gr, "%d %d", &number0, &number1);
+          (void)read_count;
           temp[number0]++;
         }
       }
@@ -300,36 +276,14 @@ int main(int argc, char** argv)
       DEG = atoi(argv[4]);
       printf("\nGraph with Parameters: N:%d DEG:%d\n",N,DEG);
    }
-   if (DEG > N)
-   {
-      fprintf(stderr, "Degree of graph cannot be grater than number of Vertices\n");
-      exit(EXIT_FAILURE);
-   }
 
    //Memory Allocations
 	 if(select!=2) {
-   if(posix_memalign((void**) &edges, 64, (N+2) * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   //if(posix_memalign((void**) &exist, 64, (N+2) * sizeof(int)))
-   //{
-   //   fprintf(stderr, "Allocation of memory failed\n");
-   //   exit(EXIT_FAILURE);
-   //}
+   edges = (int*) malloc((N+2) * sizeof(int));
    }
    int *D; int *Q;
-   if(posix_memalign((void**) &D, 64, (N+1) * sizeof(int)))
-   {   
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }   
-   if(posix_memalign((void**) &Q, 64, (N+1) * sizeof(int)))
-   {   
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
+   D = (int*) malloc((N+1) * sizeof(int));
+   Q = (int*) malloc((N+1) * sizeof(int));
 
    int d_count = N;
    pthread_barrier_t barrier_total;
@@ -341,16 +295,8 @@ int main(int argc, char** argv)
    for(int i = 0; i < N+2; i++)
    {
       //W[i] = (int *)malloc(sizeof(int)*N);
-      if(posix_memalign((void**) &W[i], 64, (DEG+1)*sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
-      if(posix_memalign((void**) &W_index[i], 64, (DEG+1)*sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
+      W[i] = (int*) malloc((DEG+1)*sizeof(int));
+      W_index[i] = (int*) malloc((DEG+1)*sizeof(int));
    }
 
    for(int i=0;i<N+2;i++)
@@ -375,12 +321,8 @@ int main(int argc, char** argv)
 
          if(lines_to_check>3)
          {
-            int f0 = fscanf(file0, "%d %d", &number0,&number1);
-            if(f0 != 2 && f0 != EOF)
-            {
-               printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-               exit (EXIT_FAILURE);
-            }
+            int read_count = fscanf(file0, "%d %d", &number0,&number1);
+            (void)read_count;
             //printf("\n%d %d",number0,number1);
             if(number0>largest)
                largest=number0;
@@ -409,7 +351,6 @@ int main(int argc, char** argv)
    pthread_barrier_init(&barrier_total, NULL, P);
    pthread_barrier_init(&barrier, NULL, P);
    pthread_mutex_init(&lock, NULL);
-   PMAX = P; //for atomic barrier
    locks = (pthread_mutex_t*) malloc((largest+16) * sizeof(pthread_mutex_t));
 
    for(int i=0; i<largest+1; i++)
@@ -455,16 +396,15 @@ int main(int argc, char** argv)
    //CarbonEnableModels();
 
    //Start Threads
-   for(int j = 1; j < P; j++) {
+   for(int j = 0; j < P; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
-   do_work((void*) &thread_arg[0]);
 
    //Join Threads
-   for(int j = 1; j < P; j++) { //mul = mul*2;
+   for(int j = 0; j < P; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
 

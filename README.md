@@ -37,7 +37,27 @@ Getting Started
 Checkout the Repo:
 ```git clone https://github.com/masabahmad/CRONO```
 
-To generate the executable for a benchmark, run ```make``` inside the CRONO directory, then execute each benchmark using the syntax specified by the individual README.md.
+Run `make` inside the CRONO directory to build all benchmarks in `build/`,
+or select one with `make bfs`. Use `build/<program>` with the arguments in
+each benchmark's README. Running `make` inside an `apps/<benchmark>` directory
+builds its variants in that directory's `build/` folder.
+
+```sh
+make -j4
+build/bfs 0 4 17 4
+make test
+```
+
+`CXX`, `CPPFLAGS`, `CXXFLAGS`, `LDFLAGS`, `LDLIBS`, and `build_dir` can be
+overridden on the command line. For example, `make build_dir=build/debug
+CXXFLAGS='-O0 -g'` uses a separate output directory. `make clean` removes
+the selected build directory.
+
+Within Delphi, `make ir` captures every benchmark through the shared
+`scripts/build.sh`; `make bfs.ir` captures just BFS. The generated IR is
+`build/ir/<program>.ll`. Override `ir_dir`, `llvm_root`, or `wllvm` when needed.
+The shared script supplies capture flags to `wllvm++`; the Makefile supplies
+the C++ standard, thread flags, and link libraries.
 
 External Users
 ==============

@@ -1,3 +1,6 @@
+# Build outputs, including shared-script IR capture.
+build/
+
 # Object files
 *.o
 *.ko

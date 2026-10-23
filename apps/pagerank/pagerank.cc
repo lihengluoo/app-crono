@@ -60,14 +60,10 @@ void* do_work(void* args)
    double r                   = 0.15;   //damping coefficient
    double d                   = 0.85;	  //damping coefficient
    double N_real              = N;
-   double tid_d = tid;
-   double P_d = arg->P;
 
    //Allocate work among threads
-   double start_d = (tid_d) * (N_real/P_d);
-   double stop_d = (tid_d+1.0) * (N_real/P_d);
-   int i_start = start_d;// tid     * N / (arg->P);
-   int i_stop  = stop_d;// (tid+1) * N / (arg->P);
+   int i_start = static_cast<long long>(tid) * N / arg->P;
+   int i_stop = (tid + 1LL) * N / arg->P;
 
    //Pagerank iteration count
    int iterations = 1;
@@ -181,55 +177,17 @@ int main(int argc, char** argv)
       printf("\nGraph with Parameters: N:%d DEG:%d\n",N,DEG);
    }
 
-   if (DEG > N)
-   {
-      fprintf(stderr, "Degree of graph cannot be grater than number of Vertices\n");
-      exit(EXIT_FAILURE);
-   }
-
    //Memory allocations
    double* PR;
    int* Q;
-   if(posix_memalign((void**) &PR, 64, N * sizeof(double)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &Q, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &test, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &exist, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &test2, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &dangling, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &pgtmp, 64, N * sizeof(double)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &outlinks, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
+   PR = (double*) malloc(N * sizeof(double));
+   Q = (int*) malloc(N * sizeof(int));
+   test = (int*) malloc(N * sizeof(int));
+   exist = (int*) malloc(N * sizeof(int));
+   test2 = (int*) malloc(N * sizeof(int));
+   dangling = (int*) malloc(N * sizeof(int));
+   pgtmp = (double*) malloc(N * sizeof(double));
+   outlinks = (int*) malloc(N * sizeof(int));
    pthread_barrier_t barrier;
 
    double** W = (double**) malloc(N*sizeof(double*));
@@ -237,13 +195,8 @@ int main(int argc, char** argv)
    for(int i = 0; i < N; i++)
    {
       //W[i] = (int *)malloc(sizeof(int)*N);
-      int ret = posix_memalign((void**) &W[i], 64, DEG*sizeof(double));
-      int re1 = posix_memalign((void**) &W_index[i], 64, DEG*sizeof(int));
-      if (ret != 0 || re1!=0)
-      {
-         fprintf(stderr, "Could not allocate memory\n");
-         exit(EXIT_FAILURE);
-      }
+      W[i] = (double*) malloc(DEG*sizeof(double));
+      W_index[i] = (int*) malloc(DEG*sizeof(int));
    }
 
    //Memory initialization
@@ -281,12 +234,8 @@ int main(int argc, char** argv)
 
          if(lines_to_check>3 && lines_to_check<lines)
          {   
-            int f0 = fscanf(file0, "%d %d", &number0,&number1);
-            if(f0 != 2 && f0 != EOF)
-            {
-               printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-               exit (EXIT_FAILURE);
-            }
+            int read_count = fscanf(file0, "%d %d", &number0,&number1);
+            (void)read_count;
 
             inter = test[number1]; 
 
@@ -381,16 +330,15 @@ int main(int argc, char** argv)
    //CarbonEnableModels();
 
    //Spawn Threads
-   for(int j = 1; j < P; j++) {
+   for(int j = 0; j < P; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
-   do_work((void*) &thread_arg[0]);  //Spawn main
 
    //Join threads
-   for(int j = 1; j < P; j++) { //mul = mul*2;
+   for(int j = 0; j < P; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
 

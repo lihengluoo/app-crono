@@ -8,7 +8,7 @@ The first argument to the executable specifies whether you want to read the grap
 **Input Graph from File**
 
 To run with P number of threads, and an input file,
-    ```./pagerank 1 P <input_file>```
+    ```./build/pagerank 1 P <input_file>```
   
   It will then ask for the input file, enter:
   sample.txt
@@ -18,7 +18,7 @@ To run with P number of threads, and an input file,
 **Generate and Input using the Synthetic Graph Generator**
 
 To run with P number of threads, N vertices, and DEG edges per vertex
-   ```./pagerank 0 P N DEG```
+   ```./build/pagerank 0 P N DEG```
 
 **Notes**
 

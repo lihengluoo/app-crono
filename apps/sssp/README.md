@@ -8,7 +8,7 @@ The first argument to the executable specifies whether you want to read the grap
 **Input Graph from a File**
 
 To run with P number of threads
-  ```./sssp 1 P <input_file>```
+  ```./build/sssp 1 P <input_file>```
   
   It will then ask for the input file, enter:
   sample.txt
@@ -18,7 +18,7 @@ To run with P number of threads
 **Generate and Input using the Synthetic Graph Generator**
 
 To run with P number of threads, N vertices, and DEG edges per vertex
-  ```./sssp 0 P N DEG```
+  ```./build/sssp 0 P N DEG```
 
 **Notes**
 
@@ -29,4 +29,4 @@ SSSP has a parameter P_max that is specified by ```cuberoot(N)*3```, which repre
 
 The executable then outputs the time in seconds that the program took to run.
 
-```sssp_outer.cc``` implemented a conventional parallelization of the bellman-ford algorithm. This is an iterative algorithm generally used in GPU implementations. ```sssp_outer_atomic.cc``` just replaces pthread_barriers with atomic barriers.
+```sssp_outer.cc``` implemented a conventional parallelization of the bellman-ford algorithm. This is an iterative algorithm generally used in GPU implementations. ```sssp_outer_atomic.cc``` also uses pthread barriers for synchronization.

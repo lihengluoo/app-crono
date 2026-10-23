@@ -74,16 +74,8 @@ void* do_work(void* args)
       //Memory allocations
       int *D;
       int *Q;
-      if (posix_memalign((void**) &D, 64, N * sizeof(int))) 
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
-      if ( posix_memalign((void**) &Q, 64, N * sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
+      D = (int*) malloc(N * sizeof(int));
+      Q = (int*) malloc(N * sizeof(int));
       //Initialize distance arrays
       initialize_single_source(D, Q, node, N);
 
@@ -119,17 +111,8 @@ int main(int argc, char** argv)
    start = P1;
    P = P1;
 
-
-   if (DEG > N)
-   {
-      fprintf(stderr, "Degree of graph cannot be grater than number of Vertices\n");
-      exit(EXIT_FAILURE);
-   }
-
    //int* D;
    //int* Q;
-   //posix_memalign((void**) &D, 64, N * sizeof(int));
-   //posix_memalign((void**) &Q, 64, N * sizeof(int));
    int d_count = N;
    pthread_barrier_t barrier_total;
    pthread_barrier_t barrier;
@@ -140,13 +123,8 @@ int main(int argc, char** argv)
    for(int i = 0; i < N; i++)
    {
       //W[i] = (int *)malloc(sizeof(int)*N);
-      int ret = posix_memalign((void**) &W[i], 64, DEG*sizeof(int));
-      int re1 = posix_memalign((void**) &W_index[i], 64, DEG*sizeof(int));
-      if (ret != 0 || re1!=0)
-      {
-         fprintf(stderr, "Could not allocate memory\n");
-         exit(EXIT_FAILURE);
-      }
+      W[i] = (int*) malloc(DEG*sizeof(int));
+      W_index[i] = (int*) malloc(DEG*sizeof(int));
    }
    
    //Initialize random graph
@@ -184,18 +162,17 @@ int main(int argc, char** argv)
    //CarbonEnableModels();
 
    //Spawn Threads
-   for(int j = 1; j < P1; j++) {
+   for(int j = 0; j < P1; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
-   do_work((void*) &thread_arg[0]);
 
    printf("\nThreads Returned!");
 
    //Join Threads
-   for(int j = 1; j < P1; j++) { //mul = mul*2;
+   for(int j = 0; j < P1; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
 

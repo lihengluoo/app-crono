@@ -77,11 +77,6 @@ void* do_work(void* args)
    int stop = 1;
    int neighbor=0;
 
-   //For precision dynamic work allocation
-   double P_d = P;
-   double range_d = 1.0;
-   double tid_d = tid;
-
    pthread_barrier_wait(arg->barrier);
 
    while(terminate==0){
@@ -128,11 +123,8 @@ void* do_work(void* args)
 
          pthread_barrier_wait(arg->barrier);
 
-         range_d = range;
-         double start_d = (range_d/P_d) * tid_d;
-         double stop_d = (range_d/P_d) * (tid_d+1.0);
-         start = start_d;//tid * (range/P);
-         stop = stop_d;//(tid+1) * (range/P);
+         start = static_cast<long long>(tid) * range / P;
+         stop = (tid + 1LL) * range / P;
 
          if(stop>range)
             stop=range;	
@@ -168,10 +160,6 @@ void* do_work(void* args)
 void make_dot_graph(int **W,int **W_index,int *exist,int *D,int N,int DEG,const char *fn)
 {
    FILE *of = fopen(fn,"w");
-   if (!of) {
-      printf ("Unable to open output file %s.\n",fn);
-      exit (EXIT_FAILURE);
-   }
 
    fprintf (of,"digraph D {\n"
          "  rankdir=LR\n"
@@ -208,10 +196,6 @@ void make_dot_graph(int **W,int **W_index,int *exist,int *D,int N,int DEG,const 
 
 int main(int argc, char** argv)
 {
-   if (argc < 3) {
-      printf ("Usage:  %s <thread-count> <input-file>\n",argv[0]);
-      return 1;
-   }
    int N = 0;
    int DEG = 0;
    FILE *file0 = NULL;
@@ -225,19 +209,10 @@ int main(int argc, char** argv)
       printf("\nGraph with Parameters: N:%d DEG:%d\n",N,DEG);
    }
 
-   if (!P) {
-      printf ("Error:  Thread count must be a valid integer greater than 0.");
-      return 1;
-   }
-
    if(select==1)
    {
       const char *filename = argv[3];
       file0 = fopen(filename,"r");
-      if (!file0) {
-         printf ("Error:  Unable to open input file '%s'\n",filename);
-         return 1;
-      }
       N = 2000000;  //can be read from file if needed, this is a default upper limit
       DEG = 16;     //also can be reda from file if needed, upper limit here again
    }
@@ -249,35 +224,13 @@ int main(int argc, char** argv)
    int previous_node = -1;
    int inter = -1;
 
-   if (DEG > N)
-   {
-      fprintf(stderr, "Degree of graph cannot be grater than number of Vertices\n");
-      exit(EXIT_FAILURE);
-   }
-
    int* D;
    int* Q;
 
-   if (posix_memalign((void**) &D, 64, N * sizeof(int))) 
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if( posix_memalign((void**) &Q, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if( posix_memalign((void**) &exist, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &id, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
+   D = (int*) malloc(N * sizeof(int));
+   Q = (int*) malloc(N * sizeof(int));
+   exist = (int*) malloc(N * sizeof(int));
+   id = (int*) malloc(N * sizeof(int));
    int d_count = N;
    pthread_barrier_t barrier;
 
@@ -285,13 +238,8 @@ int main(int argc, char** argv)
    int** W_index = (int**) malloc(N*sizeof(int*));
    for(int i = 0; i < N; i++)
    {
-      int ret = posix_memalign((void**) &W[i], 64, DEG*sizeof(int));
-      int re1 = posix_memalign((void**) &W_index[i], 64, DEG*sizeof(int));
-      if (ret != 0 || re1!=0)
-      {
-         fprintf(stderr, "Could not allocate memory\n");
-         exit(EXIT_FAILURE);
-      }
+      W[i] = (int*) malloc(DEG*sizeof(int));
+      W_index[i] = (int*) malloc(DEG*sizeof(int));
    }
 
    for(int i=0;i<N;i++)
@@ -314,18 +262,9 @@ int main(int argc, char** argv)
 
          if(lines_to_check>3)
          {   
-            int f0 = fscanf(file0, "%d %d", &number0,&number1);
-            if(f0 != 2 && f0 != EOF)
-            {
-               printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-               exit (EXIT_FAILURE);
-            }
+            int read_count = fscanf(file0, "%d %d", &number0,&number1);
+            (void)read_count;
             //printf("\n%d %d",number0,number1);
-
-            if (number0 >= N) {
-               printf ("Error:  Node %d exceeds maximum graph size of %d.\n",number0,N);
-               exit (EXIT_FAILURE);
-            }
 
             exist[number0] = 1; exist[number1] = 1;
             id[number0] = number0;
@@ -333,12 +272,6 @@ int main(int argc, char** argv)
                inter++;
             } else {
                inter=0;
-            }
-
-            // Make sure we haven't exceeded our maximum degree.
-            if (inter >= DEG) {
-               printf ("Error:  Node %d, maximum degree of %d exceeded.\n",number0,DEG);
-               exit (EXIT_FAILURE);
             }
 
             // We don't support parallel edges, so check for that and ignore.
@@ -402,16 +335,15 @@ int main(int argc, char** argv)
    //CarbonEnableModels();
 
    //create threads
-   for(int j = 1; j < P; j++) {
+   for(int j = 0; j < P; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
-   do_work((void*) &thread_arg[0]);
 
    //join threads
-   for(int j = 1; j < P; j++) { //mul = mul*2;
+   for(int j = 0; j < P; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
 

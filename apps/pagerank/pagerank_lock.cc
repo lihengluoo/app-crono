@@ -54,14 +54,11 @@ void* do_work(void* args)
    double d                   = 0.85;	  //damping coefficient
    double N_real              = N;
    int DEG                    = arg->DEG;
-   //double tid_d = tid;
    int P = arg->P;
 
    //Allocate work among threads
-   //double start_d = (tid_d) * (N_real/P_d);
-   //double stop_d = (tid_d+1.0) * (N_real/P_d);
-   int i_start = (double)tid     * (double)(N)/(double)P; 
-   int i_stop  = (double)(tid+1) * (double)(N)/(double)P;  
+   int i_start = static_cast<long long>(tid) * N / P;
+   int i_stop = (tid + 1LL) * N / P;
    //printf("\n TID: %d %d %d",tid, i_start, i_stop); 
 
    //Pagerank iteration count
@@ -180,12 +177,8 @@ int main(int argc, char** argv)
           number_of_lines0++;
         if(number_of_lines0>3)
         {
-          int f0 = fscanf(file_gr, "%d %d", &number0, &number1);
-          if(f0 != 2 && f0 !=EOF)
-          {
-            printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-            exit (EXIT_FAILURE);
-          }
+          int read_count = fscanf(file_gr, "%d %d", &number0, &number1);
+          (void)read_count;
           if(number0>N)
             N = number0;
           if(number1>N)
@@ -197,11 +190,7 @@ int main(int argc, char** argv)
       
       int *temp;
       number_of_lines0 = 0;
-      if(posix_memalign((void**) &temp, 64, N * sizeof(int)))
-      {
-        fprintf(stderr, "Allocation of memory failed\n");
-        exit(EXIT_FAILURE);
-      }
+      temp = (int*) malloc(N * sizeof(int));
       for(int i=0;i<N;i++)
         temp[i] = 0;
       file_gr = fopen(filename0,"r");
@@ -211,12 +200,8 @@ int main(int argc, char** argv)
           number_of_lines0++;
         if(number_of_lines0>3)
         {
-          int f0 = fscanf(file_gr, "%d %d", &number0, &number1);
-          if(f0 != 2 && f0 !=EOF)
-          {
-            printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-            exit (EXIT_FAILURE);
-          }
+          int read_count = fscanf(file_gr, "%d %d", &number0, &number1);
+          (void)read_count;
           temp[number0]++;
         }
       }
@@ -241,41 +226,13 @@ int main(int argc, char** argv)
 
    //Memory allocations
    double* PR;
-   if(posix_memalign((void**) &PR, 64, (N+1) * sizeof(double)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &test, 64, (N+10) * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &exist, 64, (N+1) * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &test2, 64, (N+1) * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &dangling, 64, (N+1) * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &pgtmp, 64, (N+1) * sizeof(double)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &outlinks, 64, (N+1) * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
+   PR = (double*) malloc((N+1) * sizeof(double));
+   test = (int*) malloc((N+10) * sizeof(int));
+   exist = (int*) malloc((N+1) * sizeof(int));
+   test2 = (int*) malloc((N+1) * sizeof(int));
+   dangling = (int*) malloc((N+1) * sizeof(int));
+   pgtmp = (double*) malloc((N+1) * sizeof(double));
+   outlinks = (int*) malloc((N+1) * sizeof(int));
    pthread_barrier_t barrier;
 
    double** W = (double**) malloc((N+1)*sizeof(double*));
@@ -283,13 +240,8 @@ int main(int argc, char** argv)
    for(int i = 0; i <= N; i++)
    {
       //W[i] = (int *)malloc(sizeof(int)*N);
-      int ret = posix_memalign((void**) &W[i], 64, (DEG+1)*sizeof(double));
-      int re1 = posix_memalign((void**) &W_index[i], 64, (DEG+1)*sizeof(int));
-      if (ret != 0 || re1!=0)
-      {
-         fprintf(stderr, "Could not allocate memory\n");
-         exit(EXIT_FAILURE);
-      }
+      W[i] = (double*) malloc((DEG+1)*sizeof(double));
+      W_index[i] = (int*) malloc((DEG+1)*sizeof(int));
    }
 
    //Memory initialization
@@ -318,12 +270,8 @@ int main(int argc, char** argv)
 
          if(lines_to_check>3)
          {   
-            int f0 = fscanf(file0, "%d %d", &number0,&number1);
-            if(f0 != 2 && f0 != EOF)
-            {
-               printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-               exit (EXIT_FAILURE);
-            }
+            int read_count = fscanf(file0, "%d %d", &number0,&number1);
+            (void)read_count;
 
             //inter = 1;//test[number1];
 						//if(lines_to_check>5532000)
@@ -405,16 +353,15 @@ int main(int argc, char** argv)
    //CarbonEnableModels();
 
    //Spawn Threads
-   for(int j = 1; j < P; j++) {
+   for(int j = 0; j < P; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
-   do_work((void*) &thread_arg[0]);  //Spawn main
 
    //Join threads
-   for(int j = 1; j < P; j++) { //mul = mul*2;
+   for(int j = 0; j < P; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
 

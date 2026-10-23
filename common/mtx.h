@@ -38,12 +38,8 @@ void mtx(const char* filename)
           number_of_lines++;
         if(number_of_lines==2)
         {   
-          int f0 = fscanf(file_mtx_param, "%d %d %d", &node_count,&intermediate,&edge_count);
-          if(f0 != 3 && f0 != EOF)
-          {   
-            printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-            exit (EXIT_FAILURE);
-          }   
+          int read_count = fscanf(file_mtx_param, "%d %d %d", &node_count,&intermediate,&edge_count);
+          (void)read_count;
           break;
         }   
       }   
@@ -52,16 +48,8 @@ void mtx(const char* filename)
       largest = node_count;
       printf("\nMatrix .mtx graph with Parameters: Vertices:%d Edges:%d",node_count,edge_count);
 
-   if(posix_memalign((void**) &edges, 64, node_count * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &exist, 64, node_count * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
+   edges = (int*) malloc(node_count * sizeof(int));
+   exist = (int*) malloc(node_count * sizeof(int));
    for(int i=0;i<node_count;i++)
    {
      edges[i]=0; exist[i] = 0;
@@ -74,9 +62,8 @@ void mtx(const char* filename)
           number_of_lines++;
         if(number_of_lines>2)
         {
-          int f0 = fscanf(file_mtx_deg, "%d %d", &first,&second);
-          if(f0 != 2 && f0 != EOF)
-            exit (EXIT_FAILURE);
+          int read_count = fscanf(file_mtx_deg, "%d %d", &first,&second);
+          (void)read_count;
           edges[second-1]++;
           exist[second-1]=1; exist[first-1]=1;
         }
@@ -93,16 +80,6 @@ void mtx(const char* filename)
       number_of_lines = 0;
       ch = 'a';
 
-   /*if(posix_memalign((void**) &D, 64, node_count * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &Q, 64, node_count * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }*/
    printf("\nAllocated Working Arrays");
 
    //W = (int**) malloc(node_count*sizeof(int*));
@@ -110,16 +87,8 @@ void mtx(const char* filename)
    for(int i = 0; i < node_count; i++)
    {
       //W[i] = (int *)malloc(sizeof(int)*N);
-      /*if(posix_memalign((void**) &W[i], 64, degree*sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }*/
-      if(posix_memalign((void**) &W_index[i], 64, degree*sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
+
+      W_index[i] = (int*) malloc(degree*sizeof(int));
    }
    printf("\nAllocated Weight/Index Arrays");
 
@@ -148,9 +117,8 @@ void mtx(const char* filename)
         //  break;
         if(number_of_lines>2)
         {
-          int f0 = fscanf(file_mtx, "%d %d", &first,&second);
-          if(f0 != 2 && f0 != EOF)
-            exit (EXIT_FAILURE);
+          int read_count = fscanf(file_mtx, "%d %d", &first,&second);
+          (void)read_count;
           //if(number_of_lines >= 132500000)
           //  printf("\n %d %d %d",first-1,second-1,number_of_lines);
           if((first-1 || second-1) > node_count)

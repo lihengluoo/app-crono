@@ -73,28 +73,10 @@ void* do_work(void* args)
    int v                    = 0;            //current vertex
    int** sigma              = arg->sigma;   //shortest paths passing
    P_global = start;
-   double tid_d = tid;
-   double P_d = arg->P;
-   double N_d = N;
 
-   /*int* D;
-     int* Q;
-
-     int p0 = posix_memalign((void**) &D, 64, N * sizeof(int));
-     int p1 = posix_memalign((void**) &Q, 64, N * sizeof(int));
-
-     for(int i=0;i<N;i++)
-     {
-     D[i] = INT_MAX;
-     Q[i] = 1;
-     }
-     D[0]=0;*/
-
-   //divide work among threads via double precision
-   double start_d = tid_d * (N_d/P_d);
-   double stop_d  = (tid_d+1.0) * (N_d/P_d);
-   int i_start =  start_d;// tid    * N / (arg->P);
-   int i_stop  =  stop_d;//(tid+1) * N / (arg->P);
+   //Divide work among threads using integer arithmetic.
+   int i_start = static_cast<long long>(tid) * N / P;
+   int i_stop = (tid + 1LL) * N / P;
    int node = 0;
 
    pthread_barrier_wait(arg->barrier_total);
@@ -105,16 +87,8 @@ void* do_work(void* args)
       int *D;
       int *Q;
 
-      if(posix_memalign((void**) &D, 64, N * sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
-      if(posix_memalign((void**) &Q, 64, N * sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
+      D = (int*) malloc(N * sizeof(int));
+      Q = (int*) malloc(N * sizeof(int));
 
       initialize_single_source(D, Q, node, N);
 
@@ -186,29 +160,12 @@ int main(int argc, char** argv)
    start = P1;
    P = P1;
 
-
-   if (DEG > N)
-   {
-      fprintf(stderr, "Degree of graph cannot be grater than number of Vertices\n");
-      exit(EXIT_FAILURE);
-   }
-
    //int* D;
    //int* Q;
-   //posix_memalign((void**) &D, 64, N * sizeof(int));
-   //posix_memalign((void**) &Q, 64, N * sizeof(int));
 
    //Memory allocations for the input graph
-   if(posix_memalign((void**) &avg, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &delta, 64, N * sizeof(double)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
+   avg = (int*) malloc(N * sizeof(int));
+   delta = (double*) malloc(N * sizeof(double));
 
    int d_count = N;
    pthread_barrier_t barrier_total;
@@ -223,24 +180,14 @@ int main(int argc, char** argv)
       //W[i] = (int *)malloc(sizeof(int)*N);
       delta[i]=0;
       avg[i]=0;
-      int ret = posix_memalign((void**) &W[i], 64, DEG*sizeof(int));
-      int re1 = posix_memalign((void**) &W_index[i], 64, DEG*sizeof(int));
-      if (ret != 0 || re1!=0)
-      {
-         fprintf(stderr, "Could not allocate memory\n");
-         exit(EXIT_FAILURE);
-      }
+      W[i] = (int*) malloc(DEG*sizeof(int));
+      W_index[i] = (int*) malloc(DEG*sizeof(int));
    }
 
    // The new sigma memory allocation loop
    for(int i = 0; i < P; i++)
    {
-      int re2 = posix_memalign((void**) &sigma[i], 64, N*sizeof(int));
-      if (re2!=0)
-      {
-         fprintf(stderr, "Could not allocate memory\n");
-         exit(EXIT_FAILURE);
-      }
+      sigma[i] = (int*) malloc(N*sizeof(int));
    }
    
    //Initialize random graph
@@ -290,18 +237,17 @@ int main(int argc, char** argv)
    //CarbonEnableModels();
 
    //Spawn Threads
-   for(int j = 1; j < P1; j++) {
+   for(int j = 0; j < P1; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
-   do_work((void*) &thread_arg[0]);  //Main thread spawns itself
 
    printf("\nThreads Returned!");
 
    //Join Threads
-   for(int j = 1; j < P1; j++) { //mul = mul*2;
+   for(int j = 0; j < P1; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
 

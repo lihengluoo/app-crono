@@ -8,10 +8,10 @@ The first argument to the executable specifies whether you want to read the grap
 **Input Graph from File**
 
 To run with P number of threads, and an .gr type (vertex edge) input file,
-    ```./triangle_counting_lock 1 P <input_file>```
+    ```./build/triangle_counting_lock 1 P <input_file>```
 
 To run a matrix format file (.mtx)
-    ```./triangle_counting_lock 2 P <input_file>```
+    ```./build/triangle_counting_lock 2 P <input_file>```
   
   The input file can be used as:
   sample.txt
@@ -21,7 +21,7 @@ To run a matrix format file (.mtx)
 **Generate and Input using the Synthetic Graph Generator**
 
 To run with P number of threads, N vertices, and DEG edges per vertex
-   ```./triangle_counting_lock 0 P N DEG```
+   ```./build/triangle_counting_lock 0 P N DEG```
 
 **Notes**
 

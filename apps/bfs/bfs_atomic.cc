@@ -10,7 +10,6 @@
 //#include "carbon_user.h"     /* For the Graphite Simulator*/
 #include <time.h>
 #include <sys/timeb.h>
-#include "../../common/barrier.h"
 
 #define MAX            100000000
 #define INT_MAX        100000000
@@ -68,24 +67,13 @@ void* do_work(void* args)
    int v = 0;
    int iter = 0;
 
-   //For precision work allocation
-   double P_d = P;
-   double tid_d = tid;
-   double largest_d = largest+1.0;
-
-   int start =  0;  //tid    * DEG / (arg->P);
-   int stop  = 0;   //(tid+1) * DEG / (arg->P);
-
    //Partition data into threads
-   double start_d = (tid_d) * (largest_d/P_d);
-   double stop_d = (tid_d+1.0) * (largest_d/P_d);
-   start = start_d; //tid    *  (largest+1) / (P);
-   stop = stop_d; //(tid+1) *  (largest+1) / (P);
+   int start = static_cast<long long>(tid) * (largest + 1LL) / P;
+   int stop = (tid + 1LL) * (largest + 1LL) / P;
 
    //printf("\n tid:%d %d %d",tid,start,stop);
 
-   //pthread_barrier_wait(arg->barrier_total);
-   barrier_wait();
+   pthread_barrier_wait(arg->barrier_total);
 
    while(terminate==0)
    {   
@@ -126,8 +114,7 @@ void* do_work(void* args)
       }
       //if(tid==0) printf("\n %d",Q[largest]);
 
-      //pthread_barrier_wait(arg->barrier_total);
-      barrier_wait();
+      pthread_barrier_wait(arg->barrier_total);
 
       //Update colors	
       for(v=start;v<stop;v++)
@@ -142,12 +129,10 @@ void* do_work(void* args)
       if(Q[largest]==0 || iter>=Total)
         terminate=1;
       iter++;
-      //pthread_barrier_wait(arg->barrier_total);
-      barrier_wait();
+      pthread_barrier_wait(arg->barrier_total);
    }
    //printf("\n %d %d",tid,terminate);
-   //pthread_barrier_wait(arg->barrier_total);
-   barrier_wait();
+   pthread_barrier_wait(arg->barrier_total);
 
    return NULL;
 }
@@ -196,40 +181,14 @@ int main(int argc, char** argv)
       printf("\nGraph with Parameters: N:%d DEG:%d\n",N,DEG);
    }
 
-   if (DEG > N)
-   {
-      fprintf(stderr, "Degree of graph cannot be grater than number of Vertices\n");
-      exit(EXIT_FAILURE);
-   }
-
    //Memory Allocations
    int* D;
    int* Q;
-   if(posix_memalign((void**) &D, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &Q, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &edges, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &exist, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
-   if(posix_memalign((void**) &temporary, 64, N * sizeof(int)))
-   {
-      fprintf(stderr, "Allocation of memory failed\n");
-      exit(EXIT_FAILURE);
-   }
+   D = (int*) malloc(N * sizeof(int));
+   Q = (int*) malloc(N * sizeof(int));
+   edges = (int*) malloc(N * sizeof(int));
+   exist = (int*) malloc(N * sizeof(int));
+   temporary = (int*) malloc(N * sizeof(int));
    int d_count = N;
    pthread_barrier_t barrier_total;
    pthread_barrier_t barrier;
@@ -239,16 +198,8 @@ int main(int argc, char** argv)
    for(int i = 0; i < N; i++)
    {
       //W[i] = (int *)malloc(sizeof(int)*N);
-      if(posix_memalign((void**) &W[i], 64, DEG*sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
-      if(posix_memalign((void**) &W_index[i], 64, DEG*sizeof(int)))
-      {
-         fprintf(stderr, "Allocation of memory failed\n");
-         exit(EXIT_FAILURE);
-      }
+      W[i] = (int*) malloc(DEG*sizeof(int));
+      W_index[i] = (int*) malloc(DEG*sizeof(int));
    }
 
    //Memory initialization
@@ -274,12 +225,8 @@ int main(int argc, char** argv)
 
          if(lines_to_check>3)
          {
-            int f0 = fscanf(file0, "%d %d", &number0,&number1);
-            if(f0 != 2 && f0 != EOF)
-            {
-               printf ("Error: Read %d values, expected 2. Parsing failed.\n",f0);
-               exit (EXIT_FAILURE);
-            }
+            int read_count = fscanf(file0, "%d %d", &number0,&number1);
+            (void)read_count;
             //printf("\n%d %d",number0,number1);
             if(number0>largest)
                largest=number0;
@@ -329,8 +276,6 @@ int main(int argc, char** argv)
    //Initialize Data Structures
    initialize_single_source(D, Q, 0, N);
 
-   PMAX = P;
-
    //Thread arguments
    for(int j = 0; j < P; j++) {
       thread_arg[j].local_min  = local_min_buffer;
@@ -356,16 +301,15 @@ int main(int argc, char** argv)
    clock_gettime(CLOCK_REALTIME, &requestStart);
 
    //Spawn Threads
-   for(int j = 1; j < P; j++) {
+   for(int j = 0; j < P; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
-   do_work((void*) &thread_arg[0]);  //master thread initializes itself
 
    //Join threads
-   for(int j = 1; j < P; j++) { //mul = mul*2;
+   for(int j = 0; j < P; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
 

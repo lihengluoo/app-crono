@@ -8,10 +8,10 @@ The first argument to the executable specifies whether you want to read the grap
 **Input Graph from File**
 
 To run with P number of threads, and an input file of .gr format,
-   ```./connected_components_lock 1 P <input_file>```
+   ```./build/connected_components_lock 1 P <input_file>```
 
 To run a matrix format file (.mtx)
-    ```./connected_components_lock 2 P <input_file>```
+    ```./build/connected_components_lock 2 P <input_file>```
 
   The input file can be used as:
   sample.txt
@@ -20,7 +20,7 @@ To run a matrix format file (.mtx)
 **Generate and Input using the Synthetic Graph Generator**
 
 To run with P number of threads, N vertices, and DEG edges per vertex
-   ```./connected_components_lock 0 P N DEG```
+   ```./build/connected_components_lock 0 P N DEG```
 
 **Notes**
 

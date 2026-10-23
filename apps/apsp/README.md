@@ -4,10 +4,10 @@ All Pairs Shortest Path
 Run ```make``` to generate the required executables, then run using the syntax explained below
 
 To execute with P number of threads, N vertices, and DEG edges per vertex
-    ```./apsp P N DEG```
+    ```./build/apsp P N DEG```
 
 e.g.
-    ```./apsp 2 16384 16```
+    ```./build/apsp 2 16384 16```
 
 **Notes**
 

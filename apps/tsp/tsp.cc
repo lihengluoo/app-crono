@@ -7,7 +7,6 @@
 #include <pthread.h>
 #include <cstdio>
 #include <cstdlib>
-#include <cassert>
 #include <vector>
 #include <list>
 using std::vector;
@@ -116,7 +115,6 @@ PartialTour::~PartialTour()
    void
 PartialTour::addCity(int idx)
 {  
-   assert (_length >= 1);
 
    int city = _path.back();
    int new_city = _unvisited[idx];
@@ -293,7 +291,6 @@ getNumLevels(int NUM_THREADS, int NUM_CITIES)
       if (num_permutations >= NUM_THREADS)
          return (NUM_CITIES-i);
    }
-   fprintf(stderr, "Too many threads\n");
    return 0;
 }
 
@@ -388,19 +385,13 @@ int main(int argc, char** argv)
    //CarbonEnableModels();
 
    //Create threads
-   for (int i = 1; i < NUM_THREADS; i++)
+   for (int i = 0; i < NUM_THREADS; i++)
    {
-      int ret = pthread_create(&thread_handle[i], NULL, threadWork, (void*) thread_data[i]);
-      if (ret != 0)
-      {
-         fprintf(stderr, "Could not spawn thread");
-         exit(EXIT_FAILURE);
-      }
+      pthread_create(&thread_handle[i], NULL, threadWork, (void*) thread_data[i]);
    }
-   threadWork((void*) thread_data[0]);    //master thread spawns itself
 
    //Join threads
-   for (int i = 1; i < NUM_THREADS; i++)
+   for (int i = 0; i < NUM_THREADS; i++)
    {
       pthread_join(thread_handle[i], NULL);
    }
