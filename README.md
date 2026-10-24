@@ -59,6 +59,19 @@ Within Delphi, `make ir` captures every benchmark through the shared
 The shared script supplies capture flags to `wllvm++`; the Makefile supplies
 the C++ standard, thread flags, and link libraries.
 
+Run `make bfs.test_compiler` to capture BFS and analyze it with Delphi, or
+`make test_compiler` to analyze every benchmark in the current directory.
+For BFS alone from the Delphi root, use:
+
+```sh
+make -C applications/crono/apps/bfs bfs.test_compiler
+```
+
+The compiler prints the unresolved pair count and writes the pair report to
+`build/bfs.pairs.txt`. Override `compiler` or `compiler_flags` when needed.
+Exit codes 0 (no unresolved pairs) and 2 (unresolved pairs) both count as a
+completed analysis; compiler failures still fail the Makefile check.
+
 External Users
 ==============
 

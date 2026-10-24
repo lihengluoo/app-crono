@@ -6,6 +6,8 @@ root_dir := $(abspath $(crono_dir)/../..)
 llvm_root ?= $(root_dir)/dependencies/install/llvm21
 clang := $(llvm_root)/bin/clang
 wllvm ?= $(root_dir)/dependencies/install/wllvm/bin/wllvm
+compiler ?= $(root_dir)/compiler/build/delphi-compiler
+compiler_flags ?=
 build_dir ?= build
 ir_dir ?= $(build_dir)/ir
 
@@ -18,10 +20,11 @@ bench_names := $(notdir $(bench_src:.cc=))
 bench_programs := $(addprefix $(build_dir)/,$(bench_names))
 bench_objects := $(addsuffix .o,$(bench_programs))
 ir_programs := $(addsuffix .ir,$(bench_names))
+compiler_tests := $(addsuffix .test_compiler,$(bench_names))
 
 vpath %.cc $(sort $(dir $(bench_src)))
 
-.PHONY: all benchmark ir test clean $(bench_names) $(ir_programs)
+.PHONY: all benchmark ir test test_compiler clean $(bench_names) $(ir_programs) $(compiler_tests)
 
 all: benchmark
 
@@ -46,6 +49,14 @@ $(ir_programs): %.ir:
 
 test: benchmark
 	python3 "$(crono_dir)/tests/test_runtime.py" "$(abspath $(build_dir))" $(bench_names)
+
+test_compiler: $(compiler_tests)
+
+# Exit 2 reports unresolved pairs; only compiler failures fail this check.
+$(compiler_tests): %.test_compiler: %.ir
+	mkdir -p "$(build_dir)"
+	"$(compiler)" "$(ir_dir)/$*.ll" $(compiler_flags) \
+	    --dump-unresolved="$(build_dir)/$*.pairs.txt" || test $$? -eq 2
 
 clean:
 	rm -rf "$(build_dir)"
