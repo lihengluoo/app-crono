@@ -92,14 +92,14 @@ void* do_work(void* args)
          {   
             int neighbor = W_index[v][i];
             //printf("\n Came in");
-            if(Q[neighbor]==1)                       //Uncomment for test and test and set
-            {
+            // if(Q[neighbor]==1)                       //Uncomment for test and test and set
+            // {
             pthread_mutex_lock(&locks[neighbor]);
             if(Q[neighbor]==1)                       //if unset then set
                Q[neighbor]=0;                        //Can be set to Parent
             temporary[neighbor] = 1;
             pthread_mutex_unlock(&locks[neighbor]);
-            }
+            // }
          }
       }
       //if(tid==0) printf("\n %d",Q[largest]);
